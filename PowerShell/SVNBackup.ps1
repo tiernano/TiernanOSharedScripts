@@ -1,24 +1,23 @@
-## Original code for this was taken from CodeProject (http://www.codeproject.com/KB/powershell/SVNBackupPower.aspx) 
-## written by TexasMensch. I needed to do some tweaks, and added the timing parts. 
-## Next task is to add 7zip compression and maybe some logging of some sort.
-
-$RepositoryPath = "d:\svn\" #your SVN folder
-$RepoBackupPath = "d:\svn-backups\"  # where you want files backed up
-$svnAdminexe = "c:\Program Files (x86)\VisualSVN Server\bin\svnadmin" # location of SVN Admin
-$DaysToKeepBackups = 7 # Days you want files kept
-
+$RepositoryPath = "d:\svn\" 
+$RepoBackupPath = "d:\svn-backups\"     
+$svnAdminexe = "c:\Program Files (x86)\VisualSVN Server\bin\svnadmin"
+$DaysToKeepBackups = 7
+$7zipexe = "d:\svn\7za.exe"
 
 function CreateTempDir ([string]$repoName)
 {
-    
+    #create a dir in the system temp dir for svn to copy the repository into
+	#before zipping it
+	
 	$newDir = "Not Found"
 	
-	$repoTempCopyPath = "D:\temp\" + $repoName #creating temp folder on since it has more free space than C
+	$repoTempCopyPath = "D:\temp\" + $repoName
 
     #delete it first if it exists
 	if ( [System.IO.Directory]::Exists($repoTempCopyPath) )
 	{ 
 		Remove-Item -path $repoTempCopyPath -recurse -force
+		##[System.IO.Directory]::Delete($repoTempCopyPath, $true)
 	}
 
     #then create it
@@ -32,6 +31,7 @@ function CreateTempDir ([string]$repoName)
 
 function RunSVNhotcopy ([string]$repoToCopyPath, [string]$repoTempCopyPath)
 {	
+	
 	$exe = $svnAdminexe
 	$param1 = "hotcopy"
 	$param2 = "--clean-logs"
@@ -43,7 +43,7 @@ function ZipDir ([string]$_dirToZip, [object]$_zipName)
 {
     $startDate = Get-Date
     #add zip extension if not present
-	if (-not $_zipName.EndsWith(".zip")) {$_zipName += ".zip"} 
+	if (-not $_zipName.EndsWith(".7z")) {$_zipName += ".7z"} 
 
     #make sure directory to zip exists
 	if (test-path $_dirToZip)
@@ -51,26 +51,8 @@ function ZipDir ([string]$_dirToZip, [object]$_zipName)
     	#make sure zip file doesnt already exist
 		if (-not (test-path $_zipName)) 
 		{ 
-			set-content $_zipName ("PK" + [char]5 + [char]6 + ("$([char]0)" * 18)) 
-			(dir $_zipName).IsReadOnly = $false   
-								
-			#create zip file object    
-			$_zipName = (new-object -com shell.application).NameSpace($_zipName);
-		
-			#Zippy Long stockings
-			$_zipName.copyHere($_dirToZip);
-			
-			#the copyHere function is asyncronous so we need to check the file count
-			#to see when its done. Since we are compressing a Directory the count will be 1
-			#when its done. If you zip one file at a time then the count will the number files
-			# zipped 
-		
-			do {
-					$zipCount = $_zipName.Items().count
-			 		"Waiting for compression to complete ..."
-					Start-sleep -Seconds 2
-			   }
-			While($_zipName.Items().count -lt 1)
+			$param = "a"
+			& $7zipexe $param $_zipName $_dirToZip
 		}
 	}
 	else 
@@ -141,7 +123,7 @@ foreach ($repositoryDir in Get-ChildItem -Path $RepositoryPath)
 		
 		# Zip the the backup into a zip file with datetime stamp
 		$timeStamp = Get-Date -uformat "%Y_%m_%d_%H%M%S"
-		$zipNamePath = $newBackupPath + $repositoryDir.Name + "_" + $timeStamp + ".zip"
+		$zipNamePath = $newBackupPath + $repositoryDir.Name + "_" + $timeStamp + ".7z"
 		" ... Zipping Repository Backup to $zipNamePath"
 		ZipDir $tempDir $zipNamePath 
 		
