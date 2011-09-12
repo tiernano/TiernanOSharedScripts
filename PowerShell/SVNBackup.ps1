@@ -2,7 +2,7 @@ $RepositoryPath = "d:\svn\"
 $RepoBackupPath = "d:\svn-backups\"     
 $svnAdminexe = "c:\Program Files (x86)\VisualSVN Server\bin\svnadmin"
 $DaysToKeepBackups = 7
-$7zipexe = "d:\svn\7za.exe"
+
 
 function CreateTempDir ([string]$repoName)
 {
@@ -43,7 +43,7 @@ function ZipDir ([string]$_dirToZip, [object]$_zipName)
 {
     $startDate = Get-Date
     #add zip extension if not present
-	if (-not $_zipName.EndsWith(".7z")) {$_zipName += ".7z"} 
+	if (-not $_zipName.EndsWith(".zip")) {$_zipName += ".zip"} 
 
     #make sure directory to zip exists
 	if (test-path $_dirToZip)
@@ -51,8 +51,26 @@ function ZipDir ([string]$_dirToZip, [object]$_zipName)
     	#make sure zip file doesnt already exist
 		if (-not (test-path $_zipName)) 
 		{ 
-			$param = "a"
-			& $7zipexe $param $_zipName $_dirToZip
+			set-content $_zipName ("PK" + [char]5 + [char]6 + ("$([char]0)" * 18)) 
+			(dir $_zipName).IsReadOnly = $false   
+								
+			#create zip file object    
+			$_zipName = (new-object -com shell.application).NameSpace($_zipName);
+		
+			#Zippy Long stockings
+			$_zipName.copyHere($_dirToZip);
+			
+			#the copyHere function is asyncronous so we need to check the file count
+			#to see when its done. Since we are compressing a Directory the count will be 1
+			#when its done. If you zip one file at a time then the count will the number files
+			# zipped 
+		
+			do {
+					$zipCount = $_zipName.Items().count
+			 		"Waiting for compression to complete ..."
+					Start-sleep -Seconds 2
+			   }
+			While($_zipName.Items().count -lt 1)
 		}
 	}
 	else 
@@ -123,7 +141,7 @@ foreach ($repositoryDir in Get-ChildItem -Path $RepositoryPath)
 		
 		# Zip the the backup into a zip file with datetime stamp
 		$timeStamp = Get-Date -uformat "%Y_%m_%d_%H%M%S"
-		$zipNamePath = $newBackupPath + $repositoryDir.Name + "_" + $timeStamp + ".7z"
+		$zipNamePath = $newBackupPath + $repositoryDir.Name + "_" + $timeStamp + ".zip"
 		" ... Zipping Repository Backup to $zipNamePath"
 		ZipDir $tempDir $zipNamePath 
 		
@@ -136,11 +154,10 @@ foreach ($repositoryDir in Get-ChildItem -Path $RepositoryPath)
 		$dirTimeSec = ($directoryEnd - $directoryStart).Seconds
 		"Time taken to backup $repositoryDir : $dirTimeSec"
 	}
-	$scriptEndTime = Get-Date
-	$scriptSeconds = ($scriptEndTime - $scriptStartTime).Seconds
-	"Time taken for script to run: $scriptSeconds"
 }
-
+$scriptEndTime = Get-Date
+$scriptSeconds = ($scriptEndTime - $scriptStartTime).Seconds
+"Time taken for script to run: $scriptSeconds"
 #Wait to make sure every zip completes compressing. This is important if you schedule this 
 # to run as a windows task
 Start-sleep -Seconds 5 
