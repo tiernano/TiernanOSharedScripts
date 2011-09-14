@@ -13,36 +13,42 @@ namespace Dedupe
     {
         static void Main(string[] args)
         {
-            int blockSize = 512;
+            int blockSize = 64 * 1024 * 1024;
             dedupe d = new dedupe(blockSize);
-
-            string directory = @"D:\photos\JungleDiskphotos\2006-03-13";
-            
-            foreach (string s in Directory.GetFiles(directory))
+            if (args.Length == 1)
             {
-                Console.WriteLine("Checking {0}", s);
-                d.DupeCheck(s);
+                string directory = args[0];
+
+                foreach (string s in Directory.GetFiles(directory,"*.*",SearchOption.AllDirectories))
+                {
+                    Console.WriteLine("Checking {0}", s);
+                    d.DupeCheck(s);
+                }
+                Console.WriteLine("Total Blocks {0}. Total Dupes {1}. Est savings {2}", d.blocks(), d.dupes, blockSize * d.dupes);
+
             }
-            Console.WriteLine("Total Blocks {0}. Total Dupes {1}. Est savings {2}", d.blocks(), d.dupes, blockSize * d.dupes);
-
-            Console.ReadLine();   
+            else
+            {
+                Console.WriteLine("need to enter a directory you want tested");
+            }
+            Console.ReadLine();
         }
-
+        
     }
 
     class dedupe
     {
         Hashtable t;
-        int _blockSize = 64;
-        public int dupes;        
+        int _blockSize = 64 * 1024 * 1024;
+        public int dupes;
         public int blocks()
         {
             return t.Count;
         }
-        
+
         public dedupe()
         {
-             t = new Hashtable();
+            t = new Hashtable();
         }
         public dedupe(int blockSize)
         {
@@ -55,7 +61,7 @@ namespace Dedupe
             long fileLength = fs.Length;
             long bytesLeft = fs.Length;
             int lastPos = 0;
-              
+
             while (bytesLeft > 0)
             {
                 byte[] block = new byte[_blockSize];
@@ -64,12 +70,12 @@ namespace Dedupe
                 if (t.Contains(hash))
                 {
                     dupes++;
-                   // Console.WriteLine("dupe");
+                    // Console.WriteLine("dupe");
                 }
                 else
                 {
                     t.Add(hash, block);
-                   // Console.WriteLine("non dupe");
+                    // Console.WriteLine("non dupe");
                 }
                 bytesLeft = bytesLeft - _blockSize;
             }
