@@ -2,7 +2,6 @@
 $RepoBackupPath = "d:\svn-backups\"     
 $svnAdminexe = "c:\Program Files (x86)\VisualSVN Server\bin\svnadmin"
 $DaysToKeepBackups = 7
-$7zipexe = "d:\svn\7za.exe"
 $tempFolder = "d:\temp\"
 
 
@@ -79,7 +78,7 @@ foreach ($repositoryDir in Get-ChildItem -Path $RepositoryPath)
 		"$directoryStart Processing Repository: $repositoryDir"
 		$tempDir = ""
 		" ... Creating Temp Directory"
-	    $tempDir = CreateTempDir $repositoryDir.Name
+	        $tempDir = CreateTempDir $repositoryDir.Name
 		" ... Running SVN Hotcopy to $tempDir"
 		RunSVNhotcopy $repositoryDir.FullName $tempDir
 		
@@ -87,7 +86,7 @@ foreach ($repositoryDir in Get-ChildItem -Path $RepositoryPath)
 		# next step is to clean old zipped backups
 		if ($DaysToKeepBackups -gt 0)
 		{
-			#CleanBackupDirs $RepoBackupPath $DaysToKeepBackups
+			CleanBackupDirs $RepoBackupPath $DaysToKeepBackups
 		}
 		$directoryEnd = Get-Date
 		$dirTimeSec = ($directoryEnd - $directoryStart).Seconds
